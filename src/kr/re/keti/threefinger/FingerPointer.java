@@ -8,6 +8,7 @@ import javax.swing.JFrame;
 import javax.swing.JPanel;
 import javax.swing.border.EmptyBorder;
 import javax.swing.ImageIcon;
+import javax.swing.JFileChooser;
 import javax.swing.JLabel;
 import javax.swing.JSeparator;
 import javax.swing.SpinnerNumberModel;
@@ -23,6 +24,9 @@ import java.awt.event.ItemListener;
 import javax.swing.JCheckBox;
 
 import java.awt.Font;
+import java.io.BufferedReader;
+import java.io.DataInputStream;
+import java.io.File;
 import java.io.FileInputStream;
 import java.io.FileNotFoundException;
 import java.io.FileOutputStream;
@@ -30,10 +34,13 @@ import java.io.FileReader;
 import java.io.FileWriter;
 import java.io.IOException;
 import java.io.Writer;
+import java.util.Arrays;
+import java.util.StringTokenizer;
 
 import javax.swing.JSpinner;
 import javax.swing.event.ChangeListener;
 import javax.swing.event.ChangeEvent;
+import javax.swing.filechooser.FileNameExtensionFilter;
 
 import kr.re.keti.degree.Degree;
 import kr.re.keti.degree.PortWorker;
@@ -67,7 +74,67 @@ public class FingerPointer extends JFrame {
 	private JSpinner spinner[];
 	private JLabel labelonFinger[];
 	
+	private int[] fingerdatam[][];
+	
 	int loadpoint[];
+	
+	private final int maxMapFileSize = 255;
+	
+	private final int AngleInterval = 10;
+	private final int numOfAngleUnits = 12;
+	
+	private final static int row = 9;
+	private final static int column = 12;
+
+	private int findata[][];
+	
+	File csvfilename;;
+	boolean isloadcsv;
+	
+	public int[] ReadFingerData(File fileObj) throws java.io.FileNotFoundException, java.io.IOException
+	{
+		final String mapDataSplitter = " ";
+			
+		FileInputStream fileInputStream = new FileInputStream(fileObj);
+		DataInputStream inputStream = new DataInputStream(fileInputStream);
+		
+		byte[] mapBuffer = new byte[maxMapFileSize];
+		
+		//1
+		Arrays.fill(mapBuffer, (byte)0);
+		int actualMapSize = inputStream.read(mapBuffer);
+		String mapData = new String(mapBuffer, 0, actualMapSize);
+		StringTokenizer mapDataTokenizer = new StringTokenizer(mapData, mapDataSplitter);
+		int degreeMap[] = new int[numOfAngleUnits];
+		for(int i = 0; i < numOfAngleUnits; ++i)
+		{
+			degreeMap[i] = Integer.parseInt(mapDataTokenizer.nextToken());
+		}
+		inputStream.close();
+		fileInputStream.close();
+		
+		return degreeMap;
+	}
+	
+	public int getDegree(int r, int id)
+	{
+		int resultDegree = 120;
+		int[] degreeMap = null;
+	
+		degreeMap = findata[id];
+					
+			for(int i = 0; i < numOfAngleUnits; i++)
+			{
+				if(r >= degreeMap[i])
+				{
+					resultDegree = (AngleInterval * (i));
+					break;
+				}
+				
+			}
+		
+		return resultDegree;
+	}
 
 	/**
 	 * Launch the application.
@@ -89,17 +156,48 @@ public class FingerPointer extends JFrame {
 	 * Create the frame.
 	 */
 	
+	public void readcsv(File csvname)
+	{
+		findata = new int[row][column]; 
+		
+		try {
+			// csv 데이타 파일
+			//File csv = new File("d:\\data\\Regression_ver20130401.csv");
+			BufferedReader br = new BufferedReader(new FileReader(csvname));
+			String line = "";
+			int row =0 ,i;
+
+			while ((line = br.readLine()) != null) {
+				// -1 옵션은 마지막 "," 이후 빈 공백도 읽기 위한 옵션
+				String[] token = line.split(",", -1);
+				for(i=0;i<column;i++)    findata[row][i] = Integer.parseInt(token[i]);
+				// CSV에서 읽어 배열에 옮긴 자료 확인하기 위한 출력
+				for(i=0;i<column;i++)    System.out.print(findata[row][i] + " ");
+				System.out.println("");
+				
+				row++;
+			}
+			br.close();
+
+		} 
+		catch (FileNotFoundException e) {
+			e.printStackTrace();
+		} 
+		catch (IOException e) {
+			e.printStackTrace();
+		}
+	}
+	
 	private void save()
 	{
 		try {
-			FileOutputStream savewriter = new FileOutputStream("save.txt");
+			FileOutputStream savewriter = new FileOutputStream("save.dat");
 			
 			for(int i = 0; i < NumberofFinger; i++)
 			{
 				savewriter.write(watchingpoint[i]);
 				//savewriter.write(watchingpoint[i] + " ");
 			}
-			
 			//savewriter.write("\n");
 			for(int i = 0; i < NumberofFinger; i++)
 			{
@@ -124,7 +222,7 @@ public class FingerPointer extends JFrame {
 				
 		
 		try {
-			FileInputStream loadreader = new FileInputStream("save.txt");
+			FileInputStream loadreader = new FileInputStream("save.dat");
 			
 			for(int i = 0; i < NumberofFinger; i++)
 			{
@@ -189,6 +287,9 @@ public class FingerPointer extends JFrame {
 		loadpoint = new int[9]; 
 		labelonFinger = new JLabel[9];
 		
+		isloadcsv = false;
+		
+		readcsv(new File("findata.csv"));
 		initPorts();
 		initialize();
 		initPortSettingUI();
@@ -303,22 +404,26 @@ public class FingerPointer extends JFrame {
 					// Connection routine
 					final int baudRate = 115200;
 										
-					final String mapFileName = "sensor_data.txt";
+					//final String mapFileName = "sensor_data.txt";
+					//final String mapFileName2 = "finger2_data.txt";
+					//final String mapFileName3 = "finger3_data.txt";
 					
 					degreeObj = new Degree(new PortWorker(selectedPortName, baudRate));
 					
-					try
-					{
-						degreeObj.readDegreeMap(new java.io.File(mapFileName));
-					} catch (FileNotFoundException e1)
-					{
-						// TODO Auto-generated catch block
-						e1.printStackTrace();
-					} catch (IOException e1)
-					{
-						// TODO Auto-generated catch block
-						e1.printStackTrace();
-					}
+//					try
+//					{
+//						degreeObj.readDegreeMap(new java.io.File(mapFileName));
+//					} catch (FileNotFoundException e1)
+//					{
+//						// TODO Auto-generated catch block
+//						e1.printStackTrace();
+//					} catch (IOException e1)
+//					{
+//						// TODO Auto-generated catch block
+//						e1.printStackTrace();
+//					}
+					
+					
 					
 					degreeObj.openPort();
 					
@@ -333,7 +438,8 @@ public class FingerPointer extends JFrame {
 							// TODO Auto-generated method stub
 							while(isConnected)
 							{
-								int[] result = degreeObj.getDegrees();
+								//int[] result = degreeObj.getDegrees();
+								int[] result = degreeObj.getDatas();
 								
 								if(result == null)
 									continue;
@@ -354,8 +460,6 @@ public class FingerPointer extends JFrame {
 									degree[i] = result[watchingpoint[i]];
 								}
 								updateUI();
-								
-								
 							}
 							
 						}
@@ -366,12 +470,45 @@ public class FingerPointer extends JFrame {
 					//���°� ���� ����
 					
 					comboBox.setEnabled(false);
-					
 				}
 			}
 		});
 		btnNewButton.setBounds(267, 6, 140, 23);
 		contentPane.add(btnNewButton);
+		
+		JButton btnselectcsv = new JButton("Load csv");
+		btnselectcsv.addActionListener(new ActionListener() {
+			
+			@Override
+			public void actionPerformed(ActionEvent e) {
+				// TODO Auto-generated method stub
+				JFileChooser fileChooser = new JFileChooser();
+				fileChooser.setCurrentDirectory(new File("./"));
+				FileNameExtensionFilter filter = new FileNameExtensionFilter("csv 파일", "csv");
+				//fileChooser.addChoosableFileFilter(filter);
+				fileChooser.setFileFilter(filter);
+				int returnVal = fileChooser.showDialog(null, "열기");
+				
+				if( returnVal == JFileChooser.APPROVE_OPTION)
+	            {
+	                //열기 버튼을 누르면
+	           
+	                File choosed = fileChooser.getSelectedFile();
+					readcsv(choosed);
+	                
+	            }
+	            else
+	            {
+	                //취소 버튼을 누르면
+	                
+	                
+	            }
+				
+				
+			}
+		});
+		btnselectcsv.setBounds(620, 6, 140, 23);
+		contentPane.add(btnselectcsv);
 		
 		JButton btnRefreshPortList = new JButton("Refresh port list");
 		btnRefreshPortList.addActionListener(new ActionListener() {
@@ -747,24 +884,13 @@ public class FingerPointer extends JFrame {
 		JLabel labelfinger3 = new JLabel("",new ImageIcon("C:\\Users\\keti_khlee\\workspace\\ThreeFinger\\fingerblank.png"),SwingConstants.CENTER);
 		labelfinger3.setBounds(569, 73, 97, 366);
 		contentPane.add(labelfinger3);
-		
-
-		
-
-		
+				
 		for(int i = 0; i < NumberofFinger; i++)
 		{
 			labelFinger[i].setHorizontalAlignment(SwingConstants.TRAILING);
 		}
 		
-		
-		
-		
-		
-		
-
-		
-		
+				
 	}
 	private void updateUI()
 	{
@@ -772,7 +898,7 @@ public class FingerPointer extends JFrame {
 		for(int i = 0; i < NumberofFinger; i++)
 		{
 			if(checkFinger[i].isSelected()){
-				labelFinger[i].setText(" " + degree[i]);
+				labelFinger[i].setText(" " + getDegree(degree[i], i));
 			}
 		}
 
