@@ -1,9 +1,11 @@
 package kr.re.keti.threefinger;
 
 import java.awt.BorderLayout;
+import java.awt.Rectangle;
 import java.awt.Container;
 import java.awt.EventQueue;
 
+import javax.sound.midi.Receiver;
 import javax.swing.JFrame;
 import javax.swing.JPanel;
 import javax.swing.border.EmptyBorder;
@@ -77,10 +79,13 @@ public class FingerPointer extends JFrame {
 	private JSpinner spinner[];
 	
 	private JLabel labelkPa[];
+	private JLabel labelpressure[];
 	private JSlider slider[];
 	private JCheckBox checkPressure[];
 	
 	private JCheckBox checkrawdata;
+	
+	private JLabel labeldegree[];
 	
 	private int[] fingerdatam[][];
 	
@@ -101,6 +106,8 @@ public class FingerPointer extends JFrame {
 
 	private int findata[][];
 	private int pressuredata[][];
+	
+	
 	
 	File csvfilename;;
 	boolean isloadcsv;
@@ -139,6 +146,11 @@ public class FingerPointer extends JFrame {
 					
 			for(int i = 0; i < numOfAngleUnits; i++)
 			{
+				if(r == 0)
+				{
+					resultDegree = 0;
+					break;
+				}
 				if(r >= degreeMap[i])
 				{
 					resultDegree = (AngleInterval * (i));
@@ -350,6 +362,8 @@ public class FingerPointer extends JFrame {
 		labelkPa = new JLabel[NumberofPressure];
 		slider = new JSlider[NumberofPressure];
 		checkPressure = new JCheckBox[NumberofPressure];
+		labeldegree = new JLabel[NumberofFinger];
+		labelpressure = new JLabel[NumberofPressure];
 		
 		isloadcsv = false;
 		
@@ -407,7 +421,7 @@ public class FingerPointer extends JFrame {
 		
 		JSeparator separator = new JSeparator();
 		separator.setOrientation(SwingConstants.VERTICAL);
-		separator.setBounds(288, 54, 29, 404);
+		separator.setBounds(288, 54, 29, 504);
 		contentPane.add(separator);
 		
 		JSeparator separator_1 = new JSeparator();
@@ -416,7 +430,7 @@ public class FingerPointer extends JFrame {
 		
 		JSeparator separator_2 = new JSeparator();
 		separator_2.setOrientation(SwingConstants.VERTICAL);
-		separator_2.setBounds(572, 54, 16, 404);
+		separator_2.setBounds(572, 54, 16, 504);
 		contentPane.add(separator_2);
 		
 		comboBox = new JComboBox();
@@ -657,10 +671,10 @@ public class FingerPointer extends JFrame {
 		labelFinger[0].setBounds(59, 194, 119, 42);
 		contentPane.add(labelFinger[0]);
 		
-		JLabel lblDegree = new JLabel("degree");
-		lblDegree.setFont(new Font("굴림", Font.PLAIN, 30));
-		lblDegree.setBounds(183, 199, 119, 35);
-		contentPane.add(lblDegree);
+		labeldegree[0] = new JLabel("degree");
+		labeldegree[0].setFont(new Font("굴림", Font.PLAIN, 30));
+		labeldegree[0].setBounds(183, 199, 119, 35);
+		contentPane.add(labeldegree[0]);
 		
 		spinner[0] = new JSpinner();
 		spinner[0].addChangeListener(new ChangeListener() {
@@ -695,10 +709,10 @@ public class FingerPointer extends JFrame {
 		spinner[1].setBounds(134, 296, 38, 22);
 		contentPane.add(spinner[1]);
 		
-		JLabel label_1 = new JLabel("degree");
-		label_1.setFont(new Font("굴림", Font.PLAIN, 30));
-		label_1.setBounds(183, 339, 119, 35);
-		contentPane.add(label_1);
+		labeldegree[1] = new JLabel("degree");
+		labeldegree[1].setFont(new Font("굴림", Font.PLAIN, 30));
+		labeldegree[1].setBounds(183, 339, 119, 35);
+		contentPane.add(labeldegree[1]);
 		
 		labelFinger[1] = new JLabel("0");
 		labelFinger[1].setFont(new Font("굴림", Font.PLAIN, 30));
@@ -728,10 +742,10 @@ public class FingerPointer extends JFrame {
 		spinner[2].setBounds(134, 442, 38, 22);
 		contentPane.add(spinner[2]);
 		
-		JLabel label_3 = new JLabel("degree");
-		label_3.setFont(new Font("굴림", Font.PLAIN, 30));
-		label_3.setBounds(183, 485, 119, 35);
-		contentPane.add(label_3);
+		labeldegree[2] = new JLabel("degree");
+		labeldegree[2].setFont(new Font("굴림", Font.PLAIN, 30));
+		labeldegree[2].setBounds(183, 485, 119, 35);
+		contentPane.add(labeldegree[2]);
 		
 		labelFinger[2] = new JLabel("0");
 		labelFinger[2].setFont(new Font("굴림", Font.PLAIN, 30));
@@ -761,10 +775,10 @@ public class FingerPointer extends JFrame {
 		spinner[3].setBounds(413, 155, 38, 22);
 		contentPane.add(spinner[3]);
 		
-		JLabel label_5 = new JLabel("degree");
-		label_5.setFont(new Font("굴림", Font.PLAIN, 30));
-		label_5.setBounds(468, 198, 119, 35);
-		contentPane.add(label_5);
+		labeldegree[3] = new JLabel("degree");
+		labeldegree[3].setFont(new Font("굴림", Font.PLAIN, 30));
+		labeldegree[3].setBounds(468, 198, 119, 35);
+		contentPane.add(labeldegree[3]);
 		
 		labelFinger[3] = new JLabel("0");
 		labelFinger[3].setFont(new Font("굴림", Font.PLAIN, 30));
@@ -794,10 +808,10 @@ public class FingerPointer extends JFrame {
 		spinner[4].setBounds(413, 296, 38, 22);
 		contentPane.add(spinner[4]);
 		
-		JLabel label_7 = new JLabel("degree");
-		label_7.setFont(new Font("굴림", Font.PLAIN, 30));
-		label_7.setBounds(468, 339, 119, 35);
-		contentPane.add(label_7);
+		labeldegree[4] = new JLabel("degree");
+		labeldegree[4].setFont(new Font("굴림", Font.PLAIN, 30));
+		labeldegree[4].setBounds(468, 339, 119, 35);
+		contentPane.add(labeldegree[4]);
 		
 		labelFinger[4] = new JLabel("0");
 		labelFinger[4].setFont(new Font("굴림", Font.PLAIN, 30));
@@ -827,10 +841,10 @@ public class FingerPointer extends JFrame {
 		spinner[5].setBounds(413, 442, 38, 22);
 		contentPane.add(spinner[5]);
 		
-		JLabel label_9 = new JLabel("degree");
-		label_9.setFont(new Font("굴림", Font.PLAIN, 30));
-		label_9.setBounds(468, 485, 119, 35);
-		contentPane.add(label_9);
+		labeldegree[5] = new JLabel("degree");
+		labeldegree[5].setFont(new Font("굴림", Font.PLAIN, 30));
+		labeldegree[5].setBounds(468, 485, 119, 35);
+		contentPane.add(labeldegree[5]);
 		
 		labelFinger[5] = new JLabel("0");
 		labelFinger[5].setFont(new Font("굴림", Font.PLAIN, 30));
@@ -860,10 +874,10 @@ public class FingerPointer extends JFrame {
 		spinner[6].setBounds(692, 155, 38, 22);
 		contentPane.add(spinner[6]);
 		
-		JLabel label_11 = new JLabel("degree");
-		label_11.setFont(new Font("굴림", Font.PLAIN, 30));
-		label_11.setBounds(757, 198, 119, 35);
-		contentPane.add(label_11);
+		labeldegree[6] = new JLabel("degree");
+		labeldegree[6].setFont(new Font("굴림", Font.PLAIN, 30));
+		labeldegree[6].setBounds(757, 198, 119, 35);
+		contentPane.add(labeldegree[6]);
 		
 		labelFinger[6] = new JLabel("0");
 		labelFinger[6].setFont(new Font("굴림", Font.PLAIN, 30));
@@ -893,10 +907,10 @@ public class FingerPointer extends JFrame {
 		spinner[7].setBounds(692, 296, 38, 22);
 		contentPane.add(spinner[7]);
 		
-		JLabel label_13 = new JLabel("degree");
-		label_13.setFont(new Font("굴림", Font.PLAIN, 30));
-		label_13.setBounds(757, 339, 119, 35);
-		contentPane.add(label_13);
+		labeldegree[7] = new JLabel("degree");
+		labeldegree[7].setFont(new Font("굴림", Font.PLAIN, 30));
+		labeldegree[7].setBounds(757, 339, 119, 35);
+		contentPane.add(labeldegree[7]);
 		
 		labelFinger[7] = new JLabel("0");
 		labelFinger[7].setFont(new Font("굴림", Font.PLAIN, 30));
@@ -926,14 +940,14 @@ public class FingerPointer extends JFrame {
 		spinner[8].setBounds(692, 440, 38, 22);
 		contentPane.add(spinner[8]);
 		
-		JLabel label_15 = new JLabel("degree");
-		label_15.setFont(new Font("굴림", Font.PLAIN, 30));
-		label_15.setBounds(757, 483, 119, 35);
-		contentPane.add(label_15);
+		labeldegree[8] = new JLabel("degree");
+		labeldegree[8].setFont(new Font("굴림", Font.PLAIN, 30));
+		labeldegree[8].setBounds(757, 483, 119, 35);
+		contentPane.add(labeldegree[8]);
 		
 		labelFinger[8] = new JLabel("0");
 		labelFinger[8].setFont(new Font("굴림", Font.PLAIN, 30));
-		labelFinger[8].setBounds(627, 488, 119, 42);
+		labelFinger[8].setBounds(627, 480, 119, 42);
 		contentPane.add(labelFinger[8]);
 		
 		ImageIcon finger1;
@@ -975,10 +989,10 @@ public class FingerPointer extends JFrame {
 		slider[0].setBounds(20, 100, 250, 48);
 		contentPane.add(slider[0]);
 		
-		JLabel label_slider0 = new JLabel("kPa");
-		label_slider0.setFont(new Font("굴림", Font.PLAIN, 30));
-		label_slider0.setBounds(180, 60, 119, 35);
-		contentPane.add(label_slider0);
+		labelpressure[0] = new JLabel("kPa");
+		labelpressure[0].setFont(new Font("굴림", Font.PLAIN, 30));
+		labelpressure[0].setBounds(180, 60, 119, 35);
+		contentPane.add(labelpressure[0]);
 		
 		labelkPa[0] = new JLabel("0");
 		labelkPa[0].setFont(new Font("굴림", Font.PLAIN, 30));
@@ -994,7 +1008,7 @@ public class FingerPointer extends JFrame {
 			@Override
 			public void itemStateChanged(ItemEvent e) {
 				// TODO Auto-generated method stub
-				label_slider0.setVisible(checkPressure[0].isSelected());
+				labelpressure[0].setVisible(checkPressure[0].isSelected());
 				labelkPa[0].setVisible(checkPressure[0].isSelected());
 				slider[0].setVisible(checkPressure[0].isSelected());
 			}
@@ -1013,10 +1027,10 @@ public class FingerPointer extends JFrame {
 		slider[1].setBounds(300, 100, 250, 48);
 		contentPane.add(slider[1]);
 		
-		JLabel label_slider1 = new JLabel("kPa");
-		label_slider1.setFont(new Font("굴림", Font.PLAIN, 30));
-		label_slider1.setBounds(460, 60, 119, 35);
-		contentPane.add(label_slider1);
+		labelpressure[1] = new JLabel("kPa");
+		labelpressure[1].setFont(new Font("굴림", Font.PLAIN, 30));
+		labelpressure[1].setBounds(460, 60, 119, 35);
+		contentPane.add(labelpressure[1]);
 		
 		labelkPa[1] = new JLabel("0");
 		labelkPa[1].setFont(new Font("굴림", Font.PLAIN, 30));
@@ -1032,7 +1046,7 @@ public class FingerPointer extends JFrame {
 			@Override
 			public void itemStateChanged(ItemEvent e) {
 				// TODO Auto-generated method stub
-				label_slider1.setVisible(checkPressure[1].isSelected());
+				labelpressure[1].setVisible(checkPressure[1].isSelected());
 				labelkPa[1].setVisible(checkPressure[1].isSelected());
 				slider[1].setVisible(checkPressure[1].isSelected());
 			}
@@ -1051,10 +1065,10 @@ public class FingerPointer extends JFrame {
 		slider[2].setBounds(600, 100, 250, 48);
 		contentPane.add(slider[2]);
 		
-		JLabel label_slider2 = new JLabel("kPa");
-		label_slider2.setFont(new Font("굴림", Font.PLAIN, 30));
-		label_slider2.setBounds(750, 60, 119, 35);
-		contentPane.add(label_slider2);
+		labelpressure[2] = new JLabel("kPa");
+		labelpressure[2].setFont(new Font("굴림", Font.PLAIN, 30));
+		labelpressure[2].setBounds(750, 60, 119, 35);
+		contentPane.add(labelpressure[2]);
 		
 		labelkPa[2] = new JLabel("0");
 		labelkPa[2].setFont(new Font("굴림", Font.PLAIN, 30));
@@ -1070,7 +1084,7 @@ public class FingerPointer extends JFrame {
 			@Override
 			public void itemStateChanged(ItemEvent e) {
 				// TODO Auto-generated method stub
-				label_slider2.setVisible(checkPressure[2].isSelected());
+				labelpressure[2].setVisible(checkPressure[2].isSelected());
 				labelkPa[2].setVisible(checkPressure[2].isSelected());
 				slider[2].setVisible(checkPressure[2].isSelected());
 			}
@@ -1079,7 +1093,24 @@ public class FingerPointer extends JFrame {
 		
 		checkrawdata = new JCheckBox("raw");
 		checkrawdata.setBounds(800, 10, 100, 20);
+		checkrawdata.addItemListener(new ItemListener() {
+			
+			@Override
+			public void itemStateChanged(ItemEvent e) {
+				// TODO Auto-generated method stub
+				for(int i = 0; i < NumberofFinger; i++)
+				{
+					labeldegree[i].setVisible(!checkrawdata.isSelected());
+				}
+				for(int i = 0; i < NumberofPressure; i++)
+				{
+					labelpressure[i].setVisible(!checkrawdata.isSelected());
+				}
+			}
+		});
 		contentPane.add(checkrawdata);
+		
+
 		
 				
 	}
@@ -1106,17 +1137,11 @@ public class FingerPointer extends JFrame {
 				if(!checkrawdata.isSelected()){
 					labelkPa[i].setText(" " + getPressure(pressure[i], i));
 					slider[i].setValue(getPressure(pressure[i], i));
-					if(!slider[i].isVisible())
-					{
-						slider[i].setVisible(true);
-					}
+					
 				}else
 				{
 					labelkPa[i].setText(" " + pressure[i]);
-					if(slider[i].isVisible())
-					{
-						slider[i].setVisible(false);
-					}	
+						
 				}
 			}
 		}
