@@ -171,7 +171,12 @@ public class FingerPointer extends JFrame {
 					
 			for(int i = 0; i < numOfPressureUnits; i++)
 			{
-				if(r >= pressureMap[i])
+				if(r == 0)
+				{
+					resultPressure = 0;
+					break;
+				}
+				if(r <= pressureMap[i])
 				{
 					resultPressure = (PressureInterval * (i));
 					break;
@@ -539,11 +544,13 @@ public class FingerPointer extends JFrame {
 								{
 									degree[i] = result[watchingpoint[i]];
 								}
-								for(int i = 0; i < NumberofPressure; i++)
-								{
-									pressure[i] = result[(i+1)*15-1];
+								//for(int i = 0; i < NumberofPressure; i++)
+								//{
+									pressure[0] = result[14];
+									pressure[1] = result[44];
+									pressure[2] = result[29];
 									//System.out.print(result[(i+1)*15-1] + " ");
-								}
+								//}
 								
 								updateUI();
 							}
@@ -1147,3 +1154,5 @@ public class FingerPointer extends JFrame {
 		}
 	}
 }
+
+
