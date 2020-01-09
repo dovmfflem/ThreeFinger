@@ -1,19 +1,18 @@
 package kr.re.keti.threefinger;
 
-import java.awt.BorderLayout;
-import java.awt.Rectangle;
-import java.awt.Container;
+import java.awt.Color;
 import java.awt.EventQueue;
 
-import javax.sound.midi.Receiver;
 import javax.swing.JFrame;
 import javax.swing.JPanel;
+import javax.swing.JRadioButton;
 import javax.swing.border.EmptyBorder;
+import javax.swing.ButtonGroup;
 import javax.swing.ImageIcon;
-import javax.swing.JFileChooser;
 import javax.swing.JLabel;
 import javax.swing.JSeparator;
 import javax.swing.JSlider;
+import javax.swing.JTextField;
 import javax.swing.SpinnerNumberModel;
 import javax.swing.SwingConstants;
 import javax.swing.JComboBox;
@@ -34,26 +33,31 @@ import java.io.FileInputStream;
 import java.io.FileNotFoundException;
 import java.io.FileOutputStream;
 import java.io.FileReader;
-import java.io.FileWriter;
 import java.io.IOException;
-import java.io.Writer;
+import java.net.DatagramPacket;
+import java.net.DatagramSocket;
+import java.net.InetAddress;
+import java.net.SocketException;
+import java.net.URL;
+import java.net.UnknownHostException;
 import java.util.Arrays;
 import java.util.StringTokenizer;
 
 import javax.swing.JSpinner;
 import javax.swing.event.ChangeListener;
 import javax.swing.event.ChangeEvent;
-import javax.swing.filechooser.FileNameExtensionFilter;
 
-import kr.re.keti.degree.Degree;
-import kr.re.keti.degree.PortWorker;
+
 
 import com.fazecast.jSerialComm.SerialPort;
 
+import kr.re.keti.sensorvalue.PortWorker;
+import kr.re.keti.sensorvalue.Sensor;
+
 public class FingerPointer extends JFrame {
 
-	private final int NumberofFinger = 9;
-	private final int NumberofPressure = 3;
+	private final int NumberofFinger = 3;
+	private final int NumberofPressure = 1;
 	
 	private String[] portList;
 	private SerialPort[] portObj;
@@ -70,12 +74,14 @@ public class FingerPointer extends JFrame {
 	
 	private JComboBox comboBox;
 	
-	private Degree degreeObj;
+	private Sensor sensorObj;
+	
 	
 	private Thread DegreeReader; 
 	
 	private JLabel labelFinger[];
 	private JCheckBox checkFinger[];
+	private JCheckBox checkReverse;
 	private JSpinner spinner[];
 	
 	private JLabel labelkPa[];
@@ -93,24 +99,33 @@ public class FingerPointer extends JFrame {
 	
 	private final int maxMapFileSize = 255;
 	
-	private final int AngleInterval = 10;
-	private final int PressureInterval = 10;
-	private final int numOfAngleUnits = 12;
-	private final int numOfPressureUnits = 5;
+	private final int AngleInterval = 5;		//edited
+	private final int PressureInterval = 2;
+	private final int numOfAngleUnits = 24;		//edited	
+	private final int numOfPressureUnits = 25;
 	
-	private final static int degree_row = 9;
-	private final static int degree_column = 12;
+	private final static int degree_row = 3;	
+	private final static int degree_column = 24;	//edited
 	
-	private final static int pressure_row = 3;
-	private final static int pressure_column = 5;
+	private final static int pressure_row = 2;
+	private final static int pressure_column = 25;
+	
+	private final int numofpoint = 35;
 
 	private int findata[][];
 	private int pressuredata[][];
 	
+	private int fingerIndex;
+	private int PressWatchingPoint = 4;
 	
+	private double[] send_data;
+	private boolean gender = false; //false: female; true: male	
 	
 	File csvfilename;;
 	boolean isloadcsv;
+	
+	private JRadioButton radio_famale, radio_male;
+	private ButtonGroup btngrp;
 	
 	public int[] ReadFingerData(File fileObj) throws java.io.FileNotFoundException, java.io.IOException
 	{
@@ -167,8 +182,8 @@ public class FingerPointer extends JFrame {
 		int resultPressure = 50;
 		int[] pressureMap = null;
 	
-		pressureMap = pressuredata[id];
-					
+		if(checkReverse.isSelected() != true){
+			pressureMap = pressuredata[1];
 			for(int i = 0; i < numOfPressureUnits; i++)
 			{
 				if(r == 0)
@@ -183,6 +198,26 @@ public class FingerPointer extends JFrame {
 				}
 				
 			}
+		}else{
+			pressureMap = pressuredata[0];
+			for(int i = 0; i < numOfPressureUnits; i++)
+			{
+				if(r == 0)
+				{
+					resultPressure = 0;
+					break;
+				}
+				if(r >= pressureMap[i])
+				{
+					resultPressure = (PressureInterval * (i));
+					break;
+				}
+				
+			}
+		}
+		
+					
+
 		
 		return resultPressure;
 	}
@@ -211,7 +246,7 @@ public class FingerPointer extends JFrame {
 	{
 		findata = new int[degree_row][degree_column]; 
 		try {
-			// csv 데이타 파일
+			// csv �뜲�씠�� �뙆�씪
 			BufferedReader br = new BufferedReader(new FileReader(csvname));
 			String line = "";
 			int row =0 ,i;
@@ -219,9 +254,9 @@ public class FingerPointer extends JFrame {
 			while ((line = br.readLine()) != null) {
 				String[] token = line.split(",", -1);
 				for(i=0;i<degree_column;i++)    findata[row][i] = Integer.parseInt(token[i]);
-				// CSV에서 읽어 배열에 옮긴 자료 확인하기 위한 출력
-				for(i=0;i<degree_column;i++)    System.out.print(findata[row][i] + " ");
-				System.out.println("");
+				// CSV�뿉�꽌 �씫�뼱 諛곗뿴�뿉 �삷湲� �옄猷� �솗�씤�븯湲� �쐞�븳 異쒕젰
+//				for(i=0;i<degree_column;i++)    System.out.print(findata[row][i] + " ");
+//				System.out.println("");
 				
 				row++;
 			}
@@ -240,7 +275,7 @@ public class FingerPointer extends JFrame {
 	{
 		pressuredata = new int[pressure_row][pressure_column]; 
 		try {
-			// csv 데이타 파일
+			// csv �뜲�씠�� �뙆�씪
 			BufferedReader br = new BufferedReader(new FileReader(csvname));
 			String line = "";
 			int row =0 ,i;
@@ -248,9 +283,9 @@ public class FingerPointer extends JFrame {
 			while ((line = br.readLine()) != null) {
 				String[] token = line.split(",", -1);
 				for(i=0;i<pressure_column;i++)    pressuredata[row][i] = Integer.parseInt(token[i]);
-				// CSV에서 읽어 배열에 옮긴 자료 확인하기 위한 출력
-				for(i=0;i<pressure_column;i++)    System.out.print(pressuredata[row][i] + " ");
-				System.out.println("");
+				// CSV�뿉�꽌 �씫�뼱 諛곗뿴�뿉 �삷湲� �옄猷� �솗�씤�븯湲� �쐞�븳 異쒕젰
+//				for(i=0;i<pressure_column;i++)    System.out.print(pressuredata[row][i] + " ");
+//				System.out.println("");
 				
 				row++;
 			}
@@ -372,12 +407,16 @@ public class FingerPointer extends JFrame {
 		
 		isloadcsv = false;
 		
-		ReadDegreeCSV(new File("findata.csv"));
+		ReadDegreeCSV(new File("findata5.csv"));
 		ReadPressureCSV(new File("pressuredata.csv"));
 		initPorts();
 		initialize();
 		initPortSettingUI();
-		load();
+		fingerIndex = 0;
+		//load();
+		
+		//connectUDP.start();
+		//誘몄닔�젙�릺�뿀湲� �븣臾몄뿉 二쇱꽍泥섎━
 		
 	}
 	private void initPortSettingUI()
@@ -414,7 +453,7 @@ public class FingerPointer extends JFrame {
 	
 	private void initialize(){
 		setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
-		setBounds(100, 100, 913, 628);
+		setBounds(100, 100, 713, 628);
 		contentPane = new JPanel();
 		contentPane.setBorder(new EmptyBorder(5, 5, 5, 5));
 		setContentPane(contentPane);
@@ -424,20 +463,19 @@ public class FingerPointer extends JFrame {
 		lblSerialPort.setBounds(31, 10, 98, 15);
 		contentPane.add(lblSerialPort);
 		
-		JSeparator separator = new JSeparator();
-		separator.setOrientation(SwingConstants.VERTICAL);
-		separator.setBounds(288, 54, 29, 504);
-		contentPane.add(separator);
-		
+		JLabel lblNotice = new JLabel("�삱諛붾Ⅸ �룞�옉�엯�땲�떎.");
+		lblNotice.setBounds(100, 600, 400, 60);
+		lblNotice.setFont(new Font("굴림", Font.PLAIN, 40));
+		lblNotice.setOpaque(true);
+		lblNotice.setBackground(Color.WHITE);
+		lblNotice.setHorizontalAlignment(SwingConstants.CENTER);
+		//contentPane.add(lblNotice);
+				
 		JSeparator separator_1 = new JSeparator();
 		separator_1.setBounds(31, 35, 835, 7);
 		contentPane.add(separator_1);
 		
-		JSeparator separator_2 = new JSeparator();
-		separator_2.setOrientation(SwingConstants.VERTICAL);
-		separator_2.setBounds(572, 54, 16, 504);
-		contentPane.add(separator_2);
-		
+
 		comboBox = new JComboBox();
 		comboBox.setBounds(111, 7, 128, 21);
 		contentPane.add(comboBox);
@@ -471,10 +509,10 @@ public class FingerPointer extends JFrame {
 					comboBox.setEnabled(true);
 					
 					// Disconnection routine
-					// ���� ������ Ŭ����
+					// 占쏙옙占쏙옙 占쏙옙占쏙옙占쏙옙 클占쏙옙占쏙옙
 					isConnected = false;
-					degreeObj.closePort();
-					save();
+					sensorObj.closePort();
+					//save();
 					//DegreeReader.stop();
 					
 					
@@ -486,36 +524,13 @@ public class FingerPointer extends JFrame {
 					String selectedPortName = portList[selectedPortIndex];
 					
 					// Connection routine
-					final int baudRate = 115200;
-										
-					//final String mapFileName = "sensor_data.txt";
-					//final String mapFileName2 = "finger2_data.txt";
-					//final String mapFileName3 = "finger3_data.txt";
+					final int baudRate = 921600;
 					
-					degreeObj = new Degree(new PortWorker(selectedPortName, baudRate));
-					
-//					try
-//					{
-//						degreeObj.readDegreeMap(new java.io.File(mapFileName));
-//					} catch (FileNotFoundException e1)
-//					{
-//						// TODO Auto-generated catch block
-//						e1.printStackTrace();
-//					} catch (IOException e1)
-//					{
-//						// TODO Auto-generated catch block
-//						e1.printStackTrace();
-//					}
-					
-					
-					
-					degreeObj.openPort();
-					
-					//DegreeReader.run();
+					sensorObj = new Sensor(new PortWorker(selectedPortName, baudRate));
+					sensorObj.openPort();
 					
 					DegreeReader = new Thread(new Runnable()
 					{
-						
 						@Override
 						public void run()
 						{
@@ -523,32 +538,53 @@ public class FingerPointer extends JFrame {
 							while(isConnected)
 							{
 								//int[] result = degreeObj.getDegrees();
-								int[] result = degreeObj.getDatas();
+								
+								//double[] result = sensorObj.getDatas();
+								
+								//int[] result = sensorObj.getRawData();
+								double[] result = null;
+								try {
+									result = sensorObj.getDatas3th();
+								} catch (IOException e) {
+									// TODO Auto-generated catch block
+									e.printStackTrace();
+								}
 								
 								if(result == null)
 									continue;
-								/*
-								while(result == null)
-								{
-									result = degreeObj.getDegrees();
+								
+								send_data = new double[result.length];
+								for(int i = 0; i < result.length; i++){
+									send_data[i] = result[i]* 10;									
 								}
 								
-								for(int i = 0; i < 15; i++)
+								if(result[5] == 9999) {
+									//System.out.println("female");
+									gender = false;				
+								}else {
+									gender = true;
+								}
+
+								
+//								while(result == null)
+//								{
+//									result = sensorObj.getDegrees();
+//								}
+								
+								for(int i = 0; i < result.length; i++)
 								{
-									System.out.printf("%4d ", result[i]);
+									System.out.printf("%4d ", (int)result[i]);
 								}
 								System.out.println();
-								*/
+								
 								
 								for(int i = 0; i < NumberofFinger; i++)
 								{
-									degree[i] = result[watchingpoint[i]];
+									degree[i] = (int)result[watchingpoint[i]];
 								}
 								//for(int i = 0; i < NumberofPressure; i++)
 								//{
-									pressure[0] = result[14];
-									pressure[1] = result[44];
-									pressure[2] = result[29];
+									pressure[0] = (int)result[PressWatchingPoint];
 									//System.out.print(result[(i+1)*15-1] + " ");
 								//}
 								
@@ -560,7 +596,7 @@ public class FingerPointer extends JFrame {
 					
 					isConnected = true;
 					DegreeReader.start();
-					//���°� ���� ����
+					//占쏙옙占승곤옙 占쏙옙占쏙옙 占쏙옙占쏙옙
 					
 					comboBox.setEnabled(false);
 				}
@@ -568,40 +604,6 @@ public class FingerPointer extends JFrame {
 		});
 		btnNewButton.setBounds(267, 6, 140, 23);
 		contentPane.add(btnNewButton);
-		
-		JButton btnselectcsv = new JButton("Load csv");
-		btnselectcsv.addActionListener(new ActionListener() {
-			
-			@Override
-			public void actionPerformed(ActionEvent e) {
-				// TODO Auto-generated method stub
-				JFileChooser fileChooser = new JFileChooser();
-				fileChooser.setCurrentDirectory(new File("./"));
-				FileNameExtensionFilter filter = new FileNameExtensionFilter("csv 파일", "csv");
-				//fileChooser.addChoosableFileFilter(filter);
-				fileChooser.setFileFilter(filter);
-				int returnVal = fileChooser.showDialog(null, "열기");
-				
-				if( returnVal == JFileChooser.APPROVE_OPTION)
-	            {
-	                //열기 버튼을 누르면
-	           
-	                File choosed = fileChooser.getSelectedFile();
-					ReadDegreeCSV(choosed);
-	                
-	            }
-	            else
-	            {
-	                //취소 버튼을 누르면
-	                
-	                
-	            }
-				
-				
-			}
-		});
-		btnselectcsv.setBounds(620, 6, 140, 23);
-		contentPane.add(btnselectcsv);
 		
 		JButton btnRefreshPortList = new JButton("Refresh port list");
 		btnRefreshPortList.addActionListener(new ActionListener() {
@@ -613,56 +615,128 @@ public class FingerPointer extends JFrame {
 		btnRefreshPortList.setBounds(442, 6, 134, 23);
 		contentPane.add(btnRefreshPortList);
 		
-		JLabel label = new JLabel("1-1");
+		
+		
+		JButton btnFingerS1 = new JButton("Finger Thumb");
+		btnFingerS1.setBounds(370, 100, 200, 30);
+		btnFingerS1.setFont(new Font("Arial", Font.PLAIN, 20));
+		btnFingerS1.addActionListener(new ActionListener() {
+			@Override
+			public void actionPerformed(ActionEvent e) {
+				// TODO Auto-generated method stub
+				fingerIndex = 0;		
+				if(gender == false) {
+					PressWatchingPoint = 4;
+				}else {
+					PressWatchingPoint = 5;
+				}
+				watchingpoint[0] = ((Integer)spinner[0].getValue()).intValue() + fingerIndex;
+				watchingpoint[1] = ((Integer)spinner[1].getValue()).intValue() + fingerIndex;
+				watchingpoint[2] = ((Integer)spinner[2].getValue()).intValue() + fingerIndex;
+				spinner[0].setModel(new SpinnerNumberModel(0, 0, 4, 1));
+				spinner[1].setModel(new SpinnerNumberModel(0, 0, 4, 1));
+				spinner[2].setModel(new SpinnerNumberModel(0, 0, 4, 1));
+			}
+		});
+		contentPane.add(btnFingerS1);
+		
+		JButton btnFingerS2 = new JButton("Finger 2");
+		btnFingerS2.setBounds(370, 140, 200, 30);
+		btnFingerS2.setFont(new Font("Arial", Font.PLAIN, 20));
+		btnFingerS2.addActionListener(new ActionListener() {
+			@Override
+			public void actionPerformed(ActionEvent e) {
+				// TODO Auto-generated method stub
+				fingerIndex = 6;		
+				PressWatchingPoint = fingerIndex+5;
+				watchingpoint[0] = ((Integer)spinner[0].getValue()).intValue() + fingerIndex;
+				watchingpoint[1] = ((Integer)spinner[1].getValue()).intValue() + fingerIndex;
+				watchingpoint[2] = ((Integer)spinner[2].getValue()).intValue() + fingerIndex;
+				spinner[0].setModel(new SpinnerNumberModel(0, 0, 4, 1));
+				spinner[1].setModel(new SpinnerNumberModel(0, 0, 4, 1));
+				spinner[2].setModel(new SpinnerNumberModel(0, 0, 4, 1));
+			}
+		});
+		contentPane.add(btnFingerS2);
+		
+		JButton btnFingerS3 = new JButton("Finger 3");
+		btnFingerS3.setBounds(370, 180, 200, 30);
+		btnFingerS3.setFont(new Font("Arial", Font.PLAIN, 20));
+		btnFingerS3.addActionListener(new ActionListener() {
+			@Override
+			public void actionPerformed(ActionEvent e) {
+				// TODO Auto-generated method stub
+				fingerIndex = 12;	
+				PressWatchingPoint = fingerIndex+5;
+				watchingpoint[0] = ((Integer)spinner[0].getValue()).intValue() + fingerIndex;
+				watchingpoint[1] = ((Integer)spinner[1].getValue()).intValue() + fingerIndex;
+				watchingpoint[2] = ((Integer)spinner[2].getValue()).intValue() + fingerIndex;
+				spinner[0].setModel(new SpinnerNumberModel(0, 0, 4, 1));
+				spinner[1].setModel(new SpinnerNumberModel(0, 0, 4, 1));
+				spinner[2].setModel(new SpinnerNumberModel(0, 0, 4, 1));
+			}
+		});
+		contentPane.add(btnFingerS3);
+		
+		JButton btnFingerS4 = new JButton("Finger 4");
+		btnFingerS4.setBounds(370, 220, 200, 30);
+		btnFingerS4.setFont(new Font("Arial", Font.PLAIN, 20));
+		btnFingerS4.addActionListener(new ActionListener() {
+			@Override
+			public void actionPerformed(ActionEvent e) {
+				// TODO Auto-generated method stub
+				fingerIndex = 18;		
+				PressWatchingPoint = fingerIndex+5;
+				watchingpoint[0] = ((Integer)spinner[0].getValue()).intValue() + fingerIndex;
+				watchingpoint[1] = ((Integer)spinner[1].getValue()).intValue() + fingerIndex;
+				watchingpoint[2] = ((Integer)spinner[2].getValue()).intValue() + fingerIndex;
+				spinner[0].setModel(new SpinnerNumberModel(0, 0, 4, 1));
+				spinner[1].setModel(new SpinnerNumberModel(0, 0, 4, 1));
+				spinner[2].setModel(new SpinnerNumberModel(0, 0, 4, 1));
+				
+			}
+		});
+		contentPane.add(btnFingerS4);
+		
+		JButton btnFingerS5 = new JButton("Finger 5");
+		btnFingerS5.setFont(new Font("Arial", Font.PLAIN, 20));
+		btnFingerS5.setBounds(370, 260, 200, 30);
+		btnFingerS5.addActionListener(new ActionListener() {
+			@Override
+			public void actionPerformed(ActionEvent e) {
+				// TODO Auto-generated method stub
+				fingerIndex = 24;		
+				PressWatchingPoint = fingerIndex+5;
+				watchingpoint[0] = ((Integer)spinner[0].getValue()).intValue() + fingerIndex;
+				watchingpoint[1] = ((Integer)spinner[1].getValue()).intValue() + fingerIndex;
+				watchingpoint[2] = ((Integer)spinner[2].getValue()).intValue() + fingerIndex;
+				spinner[0].setModel(new SpinnerNumberModel(0, 0, 4, 1));
+				spinner[1].setModel(new SpinnerNumberModel(0, 0, 4, 1));
+				spinner[2].setModel(new SpinnerNumberModel(0, 0, 4, 1));
+			}
+		});
+		contentPane.add(btnFingerS5);
+		
+		JLabel label = new JLabel("1");
 		label.setFont(new Font("굴림", Font.PLAIN, 25));
-		label.setBounds(32, 287, 87, 35);
+		label.setBounds(92, 287, 87, 35);
 		contentPane.add(label);
 		
-		JLabel label_2 = new JLabel("1-2");
+		JLabel label_2 = new JLabel("2");
 		label_2.setFont(new Font("굴림", Font.PLAIN, 25));
-		label_2.setBounds(31, 383, 87, 35);
+		label_2.setBounds(92, 383, 87, 35);
 		contentPane.add(label_2);
 		
-		JLabel label_4 = new JLabel("1-3");
+		JLabel label_4 = new JLabel("3");
 		label_4.setFont(new Font("굴림", Font.PLAIN, 25));
-		label_4.setBounds(31, 483, 87, 35);
+		label_4.setBounds(92, 483, 87, 35);
 		contentPane.add(label_4);
 		
-		JLabel label_6 = new JLabel("2-1");
-		label_6.setFont(new Font("굴림", Font.PLAIN, 25));
-		label_6.setBounds(313, 285, 87, 35);
-		contentPane.add(label_6);
-		
-		JLabel label_8 = new JLabel("2-2");
-		label_8.setFont(new Font("굴림", Font.PLAIN, 25));
-		label_8.setBounds(312, 388, 87, 35);
-		contentPane.add(label_8);
-		
-		JLabel label_10 = new JLabel("2-3");
-		label_10.setFont(new Font("굴림", Font.PLAIN, 25));
-		label_10.setBounds(312, 484, 87, 35);
-		contentPane.add(label_10);
-		
-		JLabel label_12 = new JLabel("3-1");
-		label_12.setFont(new Font("굴림", Font.PLAIN, 25));
-		label_12.setBounds(597, 284, 87, 35);
-		contentPane.add(label_12);
-		
-		JLabel label_14 = new JLabel("3-2");
-		label_14.setFont(new Font("굴림", Font.PLAIN, 25));
-		label_14.setBounds(596, 387, 87, 35);
-		contentPane.add(label_14);
-		
-		JLabel label_16 = new JLabel("3-3");
-		label_16.setFont(new Font("굴림", Font.PLAIN, 25));
-		label_16.setBounds(596, 483, 87, 35);
-		contentPane.add(label_16);
-
 		
 		
-		checkFinger[0] = new JCheckBox("Finger 1-1");
+		checkFinger[0] = new JCheckBox("Point 1");
 		checkFinger[0].setSelected(true);
-		checkFinger[0].setBounds(184, 155, 91, 23);
+		checkFinger[0].setBounds(234, 155, 91, 23);
 		checkFinger[0].addItemListener(new ItemListener() {
 			
 			@Override
@@ -675,27 +749,27 @@ public class FingerPointer extends JFrame {
 		
 		labelFinger[0] = new JLabel("0");
 		labelFinger[0].setFont(new Font("굴림", Font.PLAIN, 30));
-		labelFinger[0].setBounds(59, 194, 119, 42);
+		labelFinger[0].setBounds(109, 194, 119, 42);
 		contentPane.add(labelFinger[0]);
 		
 		labeldegree[0] = new JLabel("degree");
 		labeldegree[0].setFont(new Font("굴림", Font.PLAIN, 30));
-		labeldegree[0].setBounds(183, 199, 119, 35);
+		labeldegree[0].setBounds(233, 199, 119, 35);
 		contentPane.add(labeldegree[0]);
 		
 		spinner[0] = new JSpinner();
 		spinner[0].addChangeListener(new ChangeListener() {
 			public void stateChanged(ChangeEvent arg0) {
-				watchingpoint[0] = ((Integer)spinner[0].getValue()).intValue();
+				watchingpoint[0] = ((Integer)spinner[0].getValue()).intValue() + fingerIndex;
 			}
 		});
-		spinner[0].setModel(new SpinnerNumberModel(0, 0, 44, 1));
-		spinner[0].setBounds(138, 156, 38, 22);
+		spinner[0].setModel(new SpinnerNumberModel(0, 0, 4, 1));
+		spinner[0].setBounds(188, 156, 38, 22);
 		contentPane.add(spinner[0]);
 		
-		checkFinger[1] = new JCheckBox("Finger 1-2");
+		checkFinger[1] = new JCheckBox("Point 2");
 		checkFinger[1].setSelected(true);
-		checkFinger[1].setBounds(180, 295, 91, 23);
+		checkFinger[1].setBounds(230, 295, 91, 23);
 		checkFinger[1].addItemListener(new ItemListener() {
 			
 			@Override
@@ -709,26 +783,26 @@ public class FingerPointer extends JFrame {
 		spinner[1] = new JSpinner();
 		spinner[1].addChangeListener(new ChangeListener() {
 			public void stateChanged(ChangeEvent arg0) {
-				watchingpoint[1] = ((Integer)spinner[1].getValue()).intValue();
+				watchingpoint[1] = ((Integer)spinner[1].getValue()).intValue() + fingerIndex;
 			}
 		});
-		spinner[1].setModel(new SpinnerNumberModel(0, 0, 44, 1));
-		spinner[1].setBounds(134, 296, 38, 22);
+		spinner[1].setModel(new SpinnerNumberModel(0, 0, 5, 1));
+		spinner[1].setBounds(184, 296, 38, 22);
 		contentPane.add(spinner[1]);
 		
 		labeldegree[1] = new JLabel("degree");
 		labeldegree[1].setFont(new Font("굴림", Font.PLAIN, 30));
-		labeldegree[1].setBounds(183, 339, 119, 35);
+		labeldegree[1].setBounds(233, 339, 119, 35);
 		contentPane.add(labeldegree[1]);
 		
 		labelFinger[1] = new JLabel("0");
 		labelFinger[1].setFont(new Font("굴림", Font.PLAIN, 30));
-		labelFinger[1].setBounds(59, 334, 119, 42);
+		labelFinger[1].setBounds(109, 334, 119, 42);
 		contentPane.add(labelFinger[1]);
 		
-		checkFinger[2] = new JCheckBox("Finger 1-3");
+		checkFinger[2] = new JCheckBox("Point 3");
 		checkFinger[2].setSelected(true);
-		checkFinger[2].setBounds(180, 441, 91, 23);
+		checkFinger[2].setBounds(230, 441, 91, 23);
 		checkFinger[2].addItemListener(new ItemListener() {
 			
 			@Override
@@ -742,248 +816,48 @@ public class FingerPointer extends JFrame {
 		spinner[2] = new JSpinner();
 		spinner[2].addChangeListener(new ChangeListener() {
 			public void stateChanged(ChangeEvent arg0) {
-				watchingpoint[2] = ((Integer)spinner[2].getValue()).intValue();
+				watchingpoint[2] = ((Integer)spinner[2].getValue()).intValue() + fingerIndex;
 			}
 		});
-		spinner[2].setModel(new SpinnerNumberModel(0, 0, 44, 1));
-		spinner[2].setBounds(134, 442, 38, 22);
+		spinner[2].setModel(new SpinnerNumberModel(0, 0, 4, 1));
+		spinner[2].setBounds(184, 442, 38, 22);
 		contentPane.add(spinner[2]);
 		
 		labeldegree[2] = new JLabel("degree");
 		labeldegree[2].setFont(new Font("굴림", Font.PLAIN, 30));
-		labeldegree[2].setBounds(183, 485, 119, 35);
+		labeldegree[2].setBounds(233, 485, 119, 35);
 		contentPane.add(labeldegree[2]);
 		
 		labelFinger[2] = new JLabel("0");
 		labelFinger[2].setFont(new Font("굴림", Font.PLAIN, 30));
-		labelFinger[2].setBounds(59, 480, 119, 42);
+		labelFinger[2].setBounds(109, 480, 119, 42);
 		contentPane.add(labelFinger[2]);
 		
-		checkFinger[3] = new JCheckBox("Finger 2-1");
-		checkFinger[3].setSelected(true);
-		checkFinger[3].setBounds(459, 154, 91, 23);
-		checkFinger[3].addItemListener(new ItemListener() {
-			
-			@Override
-			public void itemStateChanged(ItemEvent e) {
-				// TODO Auto-generated method stub
-				label_6.setVisible(checkFinger[3].isSelected());
-			}
-		});
-		contentPane.add(checkFinger[3]);
-		
-		spinner[3] = new JSpinner();
-		spinner[3].addChangeListener(new ChangeListener() {
-			public void stateChanged(ChangeEvent arg0) {
-				watchingpoint[3] = ((Integer)spinner[3].getValue()).intValue();
-			}
-		});
-		spinner[3].setModel(new SpinnerNumberModel(0, 0, 44, 1));
-		spinner[3].setBounds(413, 155, 38, 22);
-		contentPane.add(spinner[3]);
-		
-		labeldegree[3] = new JLabel("degree");
-		labeldegree[3].setFont(new Font("굴림", Font.PLAIN, 30));
-		labeldegree[3].setBounds(468, 198, 119, 35);
-		contentPane.add(labeldegree[3]);
-		
-		labelFinger[3] = new JLabel("0");
-		labelFinger[3].setFont(new Font("굴림", Font.PLAIN, 30));
-		labelFinger[3].setBounds(343, 193, 119, 42);
-		contentPane.add(labelFinger[3]);
-		
-		checkFinger[4] = new JCheckBox("Finger 2-2");
-		checkFinger[4].setSelected(true);
-		checkFinger[4].setBounds(459, 295, 91, 23);
-		checkFinger[4].addItemListener(new ItemListener() {
-			
-			@Override
-			public void itemStateChanged(ItemEvent e) {
-				// TODO Auto-generated method stub
-				label_8.setVisible(checkFinger[4].isSelected());
-			}
-		});
-		contentPane.add(checkFinger[4]);
-		
-		spinner[4] = new JSpinner();
-		spinner[4].addChangeListener(new ChangeListener() {
-			public void stateChanged(ChangeEvent arg0) {
-				watchingpoint[4] = ((Integer)spinner[4].getValue()).intValue();
-			}
-		});
-		spinner[4].setModel(new SpinnerNumberModel(0, 0, 44, 1));
-		spinner[4].setBounds(413, 296, 38, 22);
-		contentPane.add(spinner[4]);
-		
-		labeldegree[4] = new JLabel("degree");
-		labeldegree[4].setFont(new Font("굴림", Font.PLAIN, 30));
-		labeldegree[4].setBounds(468, 339, 119, 35);
-		contentPane.add(labeldegree[4]);
-		
-		labelFinger[4] = new JLabel("0");
-		labelFinger[4].setFont(new Font("굴림", Font.PLAIN, 30));
-		labelFinger[4].setBounds(343, 334, 119, 42);
-		contentPane.add(labelFinger[4]);
-		
-		checkFinger[5] = new JCheckBox("Finger 2-3");
-		checkFinger[5].setSelected(true);
-		checkFinger[5].setBounds(459, 441, 91, 23);
-		checkFinger[5].addItemListener(new ItemListener() {
-			
-			@Override
-			public void itemStateChanged(ItemEvent e) {
-				// TODO Auto-generated method stub
-				label_10.setVisible(checkFinger[5].isSelected());
-			}
-		});
-		contentPane.add(checkFinger[5]);
-		
-		spinner[5] = new JSpinner();
-		spinner[5].addChangeListener(new ChangeListener() {
-			public void stateChanged(ChangeEvent arg0) {
-				watchingpoint[5] = ((Integer)spinner[5].getValue()).intValue();
-			}
-		});
-		spinner[5].setModel(new SpinnerNumberModel(0, 0, 44, 1));
-		spinner[5].setBounds(413, 442, 38, 22);
-		contentPane.add(spinner[5]);
-		
-		labeldegree[5] = new JLabel("degree");
-		labeldegree[5].setFont(new Font("굴림", Font.PLAIN, 30));
-		labeldegree[5].setBounds(468, 485, 119, 35);
-		contentPane.add(labeldegree[5]);
-		
-		labelFinger[5] = new JLabel("0");
-		labelFinger[5].setFont(new Font("굴림", Font.PLAIN, 30));
-		labelFinger[5].setBounds(343, 480, 119, 42);
-		contentPane.add(labelFinger[5]);
-		
-		checkFinger[6] = new JCheckBox("Finger 3-1");
-		checkFinger[6].setSelected(true);
-		checkFinger[6].setBounds(738, 154, 91, 23);
-		checkFinger[6].addItemListener(new ItemListener() {
-			
-			@Override
-			public void itemStateChanged(ItemEvent e) {
-				// TODO Auto-generated method stub
-				label_12.setVisible(checkFinger[6].isSelected());
-			}
-		});
-		contentPane.add(checkFinger[6]);
-		
-		spinner[6] = new JSpinner();
-		spinner[6].addChangeListener(new ChangeListener() {
-			public void stateChanged(ChangeEvent arg0) {
-				watchingpoint[6] = ((Integer)spinner[6].getValue()).intValue();
-			}
-		});
-		spinner[6].setModel(new SpinnerNumberModel(0, 0, 44, 1));
-		spinner[6].setBounds(692, 155, 38, 22);
-		contentPane.add(spinner[6]);
-		
-		labeldegree[6] = new JLabel("degree");
-		labeldegree[6].setFont(new Font("굴림", Font.PLAIN, 30));
-		labeldegree[6].setBounds(757, 198, 119, 35);
-		contentPane.add(labeldegree[6]);
-		
-		labelFinger[6] = new JLabel("0");
-		labelFinger[6].setFont(new Font("굴림", Font.PLAIN, 30));
-		labelFinger[6].setBounds(627, 193, 119, 42);
-		contentPane.add(labelFinger[6]);
-		
-		checkFinger[7] = new JCheckBox("Finger 3-2");
-		checkFinger[7].setSelected(true);
-		checkFinger[7].setBounds(738, 295, 91, 23);
-		checkFinger[7].addItemListener(new ItemListener() {
-			
-			@Override
-			public void itemStateChanged(ItemEvent e) {
-				// TODO Auto-generated method stub
-				label_14.setVisible(checkFinger[7].isSelected());
-			}
-		});
-		contentPane.add(checkFinger[7]);
-		
-		spinner[7] = new JSpinner();
-		spinner[7].addChangeListener(new ChangeListener() {
-			public void stateChanged(ChangeEvent arg0) {
-				watchingpoint[7] = ((Integer)spinner[7].getValue()).intValue();
-			}
-		});
-		spinner[7].setModel(new SpinnerNumberModel(0, 0, 44, 1));
-		spinner[7].setBounds(692, 296, 38, 22);
-		contentPane.add(spinner[7]);
-		
-		labeldegree[7] = new JLabel("degree");
-		labeldegree[7].setFont(new Font("굴림", Font.PLAIN, 30));
-		labeldegree[7].setBounds(757, 339, 119, 35);
-		contentPane.add(labeldegree[7]);
-		
-		labelFinger[7] = new JLabel("0");
-		labelFinger[7].setFont(new Font("굴림", Font.PLAIN, 30));
-		labelFinger[7].setBounds(627, 334, 119, 42);
-		contentPane.add(labelFinger[7]);
-		
-		checkFinger[8] = new JCheckBox("Finger 3-3");
-		checkFinger[8].setSelected(true);
-		checkFinger[8].setBounds(738, 439, 91, 23);
-		checkFinger[8].addItemListener(new ItemListener() {
-			
-			@Override
-			public void itemStateChanged(ItemEvent e) {
-				// TODO Auto-generated method stub
-				label_16.setVisible(checkFinger[8].isSelected());
-			}
-		});
-		contentPane.add(checkFinger[8]);
-		
-		spinner[8] = new JSpinner();
-		spinner[8].addChangeListener(new ChangeListener() {
-			public void stateChanged(ChangeEvent arg0) {
-				watchingpoint[8] = ((Integer)spinner[8].getValue()).intValue();
-			}
-		});
-		spinner[8].setModel(new SpinnerNumberModel(0, 0, 44, 1));
-		spinner[8].setBounds(692, 440, 38, 22);
-		contentPane.add(spinner[8]);
-		
-		labeldegree[8] = new JLabel("degree");
-		labeldegree[8].setFont(new Font("굴림", Font.PLAIN, 30));
-		labeldegree[8].setBounds(757, 483, 119, 35);
-		contentPane.add(labeldegree[8]);
-		
-		labelFinger[8] = new JLabel("0");
-		labelFinger[8].setFont(new Font("굴림", Font.PLAIN, 30));
-		labelFinger[8].setBounds(627, 480, 119, 42);
-		contentPane.add(labelFinger[8]);
-		
 		ImageIcon finger1;
-		finger1 = new ImageIcon("fingerblank.png");
+		URL imageURL = getClass().getClassLoader().getResource("fingerblank.png");
+		finger1 = new ImageIcon(imageURL);
 		
-		JLabel labelfinger1 = new JLabel("",new ImageIcon("C:\\Users\\keti_khlee\\workspace\\ThreeFinger\\fingerblank.png"),JLabel.CENTER);
-		labelfinger1.setBounds(0, 173, 97, 366);
+		JLabel labelfinger1 = new JLabel("",finger1,JLabel.CENTER);
+		labelfinger1.setBounds(50, 173, 97, 366);
 		contentPane.add(labelfinger1);
 		
-		ImageIcon finger2;
-		finger2 = new ImageIcon("fingerblank.png");
+		ImageIcon logo;
+		URL logoURL = getClass().getClassLoader().getResource("logo.png");
+		logo = new ImageIcon(logoURL);
+		JLabel lablelogo = new JLabel("",logo,JLabel.CENTER);
+		lablelogo.setBounds(260, 360, 550, 365);
+		contentPane.add(lablelogo);
 		
-		JLabel labelfinger2 = new JLabel("",new ImageIcon("C:\\Users\\keti_khlee\\workspace\\ThreeFinger\\fingerblank.png"),JLabel.CENTER);
-		labelfinger2.setBounds(286, 173, 97, 366);
-		contentPane.add(labelfinger2);
-		
-		ImageIcon finger3;
-		finger3 = new ImageIcon("fingerblank.png");
-		
-		JLabel labelfinger3 = new JLabel("",new ImageIcon("C:\\Users\\keti_khlee\\workspace\\ThreeFinger\\fingerblank.png"),SwingConstants.CENTER);
-		labelfinger3.setBounds(569, 173, 97, 366);
-		contentPane.add(labelfinger3);
+		checkReverse = new JCheckBox("Rev");
+		checkReverse.setSelected(false);
+		checkReverse.setBounds(640, 10, 100, 20);
+		contentPane.add(checkReverse);
+
 				
 		for(int i = 0; i < NumberofFinger; i++)
 		{
 			labelFinger[i].setHorizontalAlignment(SwingConstants.TRAILING);
 		}
-		
-		
 		
 		slider[0] = new JSlider();
 		slider[0].setMajorTickSpacing(10);
@@ -993,23 +867,23 @@ public class FingerPointer extends JFrame {
 		slider[0].setMinorTickSpacing(10);
 		slider[0].setMaximum(50);
 		slider[0].setFont(new Font("굴림", Font.PLAIN, 12));
-		slider[0].setBounds(20, 100, 250, 48);
+		slider[0].setBounds(70, 100, 250, 48);
 		contentPane.add(slider[0]);
 		
 		labelpressure[0] = new JLabel("kPa");
 		labelpressure[0].setFont(new Font("굴림", Font.PLAIN, 30));
-		labelpressure[0].setBounds(180, 60, 119, 35);
+		labelpressure[0].setBounds(230, 60, 119, 35);
 		contentPane.add(labelpressure[0]);
 		
 		labelkPa[0] = new JLabel("0");
 		labelkPa[0].setFont(new Font("굴림", Font.PLAIN, 30));
-		labelkPa[0].setBounds(54, 55, 119, 42);
+		labelkPa[0].setBounds(104, 55, 119, 42);
 		labelkPa[0].setHorizontalAlignment(SwingConstants.TRAILING);
 		contentPane.add(labelkPa[0]);
 		
 		checkPressure[0] = new JCheckBox("Pressure 1");
 		checkPressure[0].setSelected(true);
-		checkPressure[0].setBounds(180, 40, 91, 23);
+		checkPressure[0].setBounds(230, 40, 91, 23);
 		checkPressure[0].addItemListener(new ItemListener() {
 			
 			@Override
@@ -1022,84 +896,10 @@ public class FingerPointer extends JFrame {
 		});
 		contentPane.add(checkPressure[0]);
 		
-		
-		slider[1] = new JSlider();
-		slider[1].setMajorTickSpacing(10);
-		slider[1].setValue(0);
-		slider[1].setPaintLabels(true);
-		slider[1].setPaintTicks(true);
-		slider[1].setMinorTickSpacing(10);
-		slider[1].setMaximum(50);
-		slider[1].setFont(new Font("굴림", Font.PLAIN, 12));
-		slider[1].setBounds(300, 100, 250, 48);
-		contentPane.add(slider[1]);
-		
-		labelpressure[1] = new JLabel("kPa");
-		labelpressure[1].setFont(new Font("굴림", Font.PLAIN, 30));
-		labelpressure[1].setBounds(460, 60, 119, 35);
-		contentPane.add(labelpressure[1]);
-		
-		labelkPa[1] = new JLabel("0");
-		labelkPa[1].setFont(new Font("굴림", Font.PLAIN, 30));
-		labelkPa[1].setBounds(333, 55, 119, 42);
-		labelkPa[1].setHorizontalAlignment(SwingConstants.TRAILING);
-		contentPane.add(labelkPa[1]);
-		
-		checkPressure[1] = new JCheckBox("Pressure 2");
-		checkPressure[1].setSelected(true);
-		checkPressure[1].setBounds(460, 40, 91, 23);
-		checkPressure[1].addItemListener(new ItemListener() {
-			
-			@Override
-			public void itemStateChanged(ItemEvent e) {
-				// TODO Auto-generated method stub
-				labelpressure[1].setVisible(checkPressure[1].isSelected());
-				labelkPa[1].setVisible(checkPressure[1].isSelected());
-				slider[1].setVisible(checkPressure[1].isSelected());
-			}
-		});
-		contentPane.add(checkPressure[1]);
-		
-		
-		slider[2] = new JSlider();
-		slider[2].setMajorTickSpacing(10);
-		slider[2].setValue(0);
-		slider[2].setPaintLabels(true);
-		slider[2].setPaintTicks(true);
-		slider[2].setMinorTickSpacing(10);
-		slider[2].setMaximum(50);
-		slider[2].setFont(new Font("굴림", Font.PLAIN, 12));
-		slider[2].setBounds(600, 100, 250, 48);
-		contentPane.add(slider[2]);
-		
-		labelpressure[2] = new JLabel("kPa");
-		labelpressure[2].setFont(new Font("굴림", Font.PLAIN, 30));
-		labelpressure[2].setBounds(750, 60, 119, 35);
-		contentPane.add(labelpressure[2]);
-		
-		labelkPa[2] = new JLabel("0");
-		labelkPa[2].setFont(new Font("굴림", Font.PLAIN, 30));
-		labelkPa[2].setBounds(622, 55, 119, 42);
-		labelkPa[2].setHorizontalAlignment(SwingConstants.TRAILING);
-		contentPane.add(labelkPa[2]);
-		
-		checkPressure[2] = new JCheckBox("Pressure 3");
-		checkPressure[2].setSelected(true);
-		checkPressure[2].setBounds(740, 40, 91, 23);
-		checkPressure[2].addItemListener(new ItemListener() {
-			
-			@Override
-			public void itemStateChanged(ItemEvent e) {
-				// TODO Auto-generated method stub
-				labelpressure[2].setVisible(checkPressure[2].isSelected());
-				labelkPa[2].setVisible(checkPressure[2].isSelected());
-				slider[2].setVisible(checkPressure[2].isSelected());
-			}
-		});
-		contentPane.add(checkPressure[2]);
+
 		
 		checkrawdata = new JCheckBox("raw");
-		checkrawdata.setBounds(800, 10, 100, 20);
+		checkrawdata.setBounds(590, 10, 50, 20);
 		checkrawdata.addItemListener(new ItemListener() {
 			
 			@Override
@@ -1117,10 +917,198 @@ public class FingerPointer extends JFrame {
 		});
 		contentPane.add(checkrawdata);
 		
-
 		
-				
+		JLabel lbaddress = new JLabel("IP ");
+		lbaddress.setBounds(370, 420, 100, 20);
+		contentPane.add(lbaddress);
+		
+		JTextField tfaddress = new JTextField("10.0.5.21");
+		tfaddress.setBounds(420, 420, 100, 20);
+		contentPane.add(tfaddress);
+		
+		JLabel lbport = new JLabel("PORT ");
+		lbport.setBounds(370, 450, 100, 20);
+		contentPane.add(lbport);
+		
+		JTextField tfport = new JTextField("9999");
+		tfport.setBounds(420, 450, 100, 20);
+		contentPane.add(tfport);
+		
+		
+		JButton btnConnect = new JButton("Send");
+		btnConnect.setBounds(540, 420, 100, 20);
+		btnConnect.addActionListener(new ActionListener() {
+			
+			@Override
+			public void actionPerformed(ActionEvent e) {
+				// TODO Auto-generated method stub
+				isudp = true;
+				issend = true;
+				hostaddress = tfaddress.getText();
+				port = Integer.parseInt(tfport.getText());
+			}
+		});
+		contentPane.add(btnConnect);
+		
+		JButton btnDisconnect = new JButton("Stop");
+		btnDisconnect.setBounds(540, 450, 100, 20);
+		btnDisconnect.addActionListener(new ActionListener() {
+			
+			@Override
+			public void actionPerformed(ActionEvent e) {
+				// TODO Auto-generated method stub
+				issend = false;
+			}
+		});
+		contentPane.add(btnDisconnect);
+		
+		
+		
+		radio_famale = new JRadioButton("Female");
+		radio_famale.setBounds(590, 40, 100, 20);
+		radio_famale.setSelected(true);
+		radio_famale.addActionListener(new ActionListener() {
+			@Override
+			public void actionPerformed(ActionEvent e) {
+				// TODO Auto-generated method stub
+				gender = radio_male.isSelected();
+				if(fingerIndex == 0) {
+					if(gender == false) {
+						PressWatchingPoint = 4;
+					}else {
+						PressWatchingPoint = 5;
+					}
+				}
+			}
+		});
+		//contentPane.add(radio_famale);
+		
+		radio_male = new JRadioButton("Male");
+		radio_male.setBounds(590, 60, 100, 20);
+		radio_male.addActionListener(new ActionListener() {
+			
+			@Override
+			public void actionPerformed(ActionEvent e) {
+				// TODO Auto-generated method stub
+				gender = radio_male.isSelected();
+				if(fingerIndex == 0) {
+					if(gender == false) {
+						PressWatchingPoint = 4;
+					}else {
+						PressWatchingPoint = 5;
+					}
+				}
+			}
+		});
+		//contentPane.add(radio_male);
+		
+		btngrp = new ButtonGroup();
+		btngrp.add(radio_famale);
+		btngrp.add(radio_male);
 	}
+	
+	private boolean isudp = false;
+	private String hostaddress = null;
+	private int port = 9999;
+	private DatagramSocket socket;
+	private DatagramPacket packet;
+	private byte[] buf;
+	int count = 0;
+	private boolean issend = false;
+	
+	
+	private Thread connectUDP = new Thread(new Runnable() {
+		
+		@Override
+		public void run() {
+			buf = new byte[50];
+			// TODO Auto-generated method stub
+			while(!isudp){
+				try {
+					Thread.sleep(1000);
+				} catch (InterruptedException e) {
+					// TODO Auto-generated catch block
+					e.printStackTrace();
+				}
+			}
+			
+			//isudp
+			System.out.println("Address : " + hostaddress);
+			System.out.println("Port : " + port);
+			try {
+				socket = new DatagramSocket();
+			} catch (SocketException e2) {
+				// TODO Auto-generated catch block
+				e2.printStackTrace();
+			}
+			try {
+				packet = new DatagramPacket(buf, buf.length, InetAddress.getByName(hostaddress), port);
+			} catch (UnknownHostException e1) {
+				// TODO Auto-generated catch block
+				e1.printStackTrace();
+			}
+			while(issend){
+				try {
+					for(int i = 0; i < 5; i++){
+						for(int j = 0; j < 9; j++){
+							buf[count] = (byte)getDegree((int) send_data[j+(i*19)], 0);
+							//buf[count++] = (byte)send_data[j+(i*19)];
+							System.out.printf("%d " , buf[count++]);
+						}
+					}
+					
+					System.out.print(" $ ");
+					
+					if(send_data[18] + send_data[37] + send_data[56] + send_data[75] + send_data[94] != 0){
+						buf[count++] = (byte)send_data[18];					
+						buf[count++] = (byte)send_data[37];
+						buf[count++] = (byte)send_data[56];
+						buf[count++] = (byte)send_data[75];
+						buf[count++] = (byte)send_data[94];
+						System.out.print((byte)send_data[18]+ " ");
+						System.out.print((byte)send_data[37]+ " ");
+						System.out.print((byte)send_data[56]+ " ");
+						System.out.print((byte)send_data[75]+ " ");
+						System.out.print((byte)send_data[94]+ " ");	
+					}else{
+						for(int i = 0; i < 5; i++){
+							buf[count++] = 0;
+						}
+					}
+					
+					System.out.println();
+					count = 0;
+
+//					System.out.print("degree data : ");
+//					for(int i = 0; i < 45; i++){
+//						System.out.printf("%d ", buf[i]);
+//					}
+//					System.out.println();
+
+					socket.send(packet);
+					Thread.sleep(500);
+
+				} catch (SocketException e) {
+					// TODO Auto-generated catch block
+					e.printStackTrace();
+				} catch (UnknownHostException e) {
+					// TODO Auto-generated catch block
+					e.printStackTrace();
+				} catch (IOException e) {
+					// TODO Auto-generated catch block
+					e.printStackTrace();
+				} catch (InterruptedException e) {
+					// TODO Auto-generated catch block
+					e.printStackTrace();
+				}
+
+			}
+		}
+	});
+	
+	 
+
+	
 	private void updateUI()
 	{
 	
